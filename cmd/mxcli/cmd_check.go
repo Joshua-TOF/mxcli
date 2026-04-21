@@ -46,6 +46,10 @@ Examples:
 		projectPath, _ := cmd.Flags().GetString("project")
 		checkRefs, _ := cmd.Flags().GetBool("references")
 		format := resolveFormat(cmd, "text")
+		isStructured := format != "" && format != "text"
+
+		outputFormat := linter.OutputFormat(format)
+		formatter := linter.GetFormatter(outputFormat, !isStructured)
 
 		// Read the file
 		content, err := os.ReadFile(filePath)
@@ -55,24 +59,40 @@ Examples:
 		}
 
 		// Parse the script
-		fmt.Printf("Checking syntax: %s\n", filePath)
+		if !isStructured {
+			fmt.Printf("Checking syntax: %s\n", filePath)
+		}
 		prog, errs := visitor.Build(string(content))
 		if len(errs) > 0 {
-			fmt.Fprintf(os.Stderr, "Syntax errors found:\n")
-			for _, err := range errs {
-				fmt.Fprintf(os.Stderr, "  - %v\n", err)
-			}
-			// Hint: if script contains IMPORT/QUERY with single $ but not $$, suggest dollar-quoting
-			src := string(content)
-			if (strings.Contains(src, "IMPORT") || strings.Contains(src, "import")) &&
-				(strings.Contains(src, "QUERY") || strings.Contains(src, "query")) &&
-				strings.Contains(src, "$") && !strings.Contains(src, "$$") {
-				fmt.Fprintf(os.Stderr, "\nHint: SQL queries in IMPORT statements should use dollar-quoting ($$...$$) instead of single quotes.\n")
-				fmt.Fprintf(os.Stderr, "  Example: IMPORT FROM alias QUERY $$SELECT * FROM table$$ INTO Module.Entity MAP (...)\n")
+			if isStructured {
+				var parseViolations []linter.Violation
+				for _, parseErr := range errs {
+					parseViolations = append(parseViolations, linter.Violation{
+						RuleID:   "MDL-SYNTAX",
+						Severity: linter.SeverityError,
+						Message:  parseErr.Error(),
+					})
+				}
+				formatter.Format(parseViolations, os.Stderr)
+			} else {
+				fmt.Fprintf(os.Stderr, "Syntax errors found:\n")
+				for _, err := range errs {
+					fmt.Fprintf(os.Stderr, "  - %v\n", err)
+				}
+				// Hint: if script contains IMPORT/QUERY with single $ but not $$, suggest dollar-quoting
+				src := string(content)
+				if (strings.Contains(src, "IMPORT") || strings.Contains(src, "import")) &&
+					(strings.Contains(src, "QUERY") || strings.Contains(src, "query")) &&
+					strings.Contains(src, "$") && !strings.Contains(src, "$$") {
+					fmt.Fprintf(os.Stderr, "\nHint: SQL queries in IMPORT statements should use dollar-quoting ($$...$$) instead of single quotes.\n")
+					fmt.Fprintf(os.Stderr, "  Example: IMPORT FROM alias QUERY $$SELECT * FROM table$$ INTO Module.Entity MAP (...)\n")
+				}
 			}
 			os.Exit(1)
 		}
-		fmt.Printf("✓ Syntax OK (%d statements)\n", len(prog.Statements))
+		if !isStructured {
+			fmt.Printf("✓ Syntax OK (%d statements)\n", len(prog.Statements))
+		}
 
 		// Validate statements (doesn't require project connection)
 		var violations []linter.Violation
@@ -98,14 +118,15 @@ Examples:
 			}
 		}
 
-		if len(violations) > 0 {
-			// Use structured output
-			outputFormat := linter.OutputFormat(format)
-			formatter := linter.GetFormatter(outputFormat, format == "" || format == "text")
+		if isStructured {
+			// Always emit structured output (even when clean)
+			formatter.Format(violations, os.Stderr)
+		} else if len(violations) > 0 {
 			fmt.Fprintln(os.Stderr)
 			formatter.Format(violations, os.Stderr)
+		}
 
-			// Exit with error if there are any error-severity violations
+		if len(violations) > 0 {
 			summary := linter.Summarize(violations)
 			if summary.Errors > 0 {
 				os.Exit(1)
@@ -119,8 +140,10 @@ Examples:
 				os.Exit(1)
 			}
 
-			fmt.Printf("\nValidating references against: %s\n", projectPath)
-			fmt.Printf("(Note: References to objects created within the script are skipped)\n")
+			if !isStructured {
+				fmt.Printf("\nValidating references against: %s\n", projectPath)
+				fmt.Printf("(Note: References to objects created within the script are skipped)\n")
+			}
 			exec, logger := newLoggedExecutor("check")
 			defer logger.Close()
 			defer exec.Close()
@@ -144,9 +167,13 @@ Examples:
 				fmt.Fprintf(os.Stderr, "\n✗ %d reference error(s) found\n", len(validationErrors))
 				os.Exit(1)
 			}
-			fmt.Printf("✓ All references valid\n")
+			if !isStructured {
+				fmt.Printf("✓ All references valid\n")
+			}
 		}
 
-		fmt.Println("\nCheck passed!")
+		if !isStructured {
+			fmt.Println("\nCheck passed!")
+		}
 	},
 }
