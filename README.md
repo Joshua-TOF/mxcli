@@ -18,6 +18,7 @@ Mendix projects are stored in binary `.mpr` files that AI agents can't read dire
 - **Code navigation** - Find callers, callees, references, and impact analysis
 - **Catalog queries** - SQL-based querying of project metadata
 - **Linting** - Check projects for common issues
+- **Debugging** - Set breakpoints, step through microflows, inspect variables, and trace execution
 - **Unix pipe support** - Output formats designed for scripting and chaining
 
 ## What is mxcli?
@@ -85,6 +86,12 @@ The project structure shows you all modules with document, similar to the app ex
 Claude code can start your Mendix project using PAD (portable application distribution). This will run the Mendix runtime in a docker container, and postgres in another docker container. This allows you to test your Mendix project without leaving vscode.
 
 ![mxcli docker portable application distribution](docs/images/mxcli-docker-run.png)
+
+### Debug running Mendix applications
+
+Mxcli can connect to the Mendix runtime debugger to set breakpoints, step through microflows, and inspect variables. The `debug trace` command automates multi-step execution with diff-based variable output — showing only what changed at each action instead of dumping full variable snapshots.
+
+For local Docker projects, connection details are auto-resolved. For Studio Pro or cloud environments, pass the URL and debugger password explicitly. AI coding assistants like Claude Code can use the debugger to diagnose issues, stepping through microflows and analyzing variable state changes autonomously.
 
 ### Automated Playwright-cli testing for Mendix projects
 
@@ -284,6 +291,45 @@ mxcli lint -p app.mpr --exclude System --exclude Administration
 ```
 
 14 built-in Go rules (MPR001-MPR007, SEC001-SEC003, CONV011-CONV014) plus 27 bundled Starlark rules covering security (SEC004-SEC009), architecture (ARCH001-003), quality (QUAL001-004), design (DESIGN001), and Mendix best practice conventions (CONV001-CONV010, CONV015-CONV017). Custom `.star` rules in `.claude/lint-rules/` are loaded automatically.
+
+### Debugging
+
+Connect to a running Mendix application's debugger to set breakpoints, step through microflows, and inspect variables:
+
+```bash
+# start a debug session (local Docker — zero config)
+mxcli debug start -p app.mpr
+
+# or connect to Studio Pro / cloud with explicit credentials
+mxcli debug start -p app.mpr --url http://localhost:8080 --password <debugger-password>
+
+# see microflow actions with their internal object IDs
+mxcli describe -p app.mpr microflow MyModule.ProcessOrder --ids
+
+# set a breakpoint by action name
+mxcli debug breakpoint add -p app.mpr MyModule.ProcessOrder --action "Commit"
+
+# wait for breakpoint hit
+mxcli debug poll -p app.mpr
+
+# step through and inspect
+mxcli debug step-over -p app.mpr <debug-id>
+mxcli debug poll -p app.mpr
+
+# or trace multiple steps at once with diff-based output
+mxcli debug trace -p app.mpr <debug-id> --steps 20
+
+# follow into sub-microflows
+mxcli debug trace -p app.mpr <debug-id> --steps 100 --deep
+
+# continue execution
+mxcli debug continue -p app.mpr <debug-id>
+
+# stop the debug session
+mxcli debug stop -p app.mpr
+```
+
+The `trace` command steps through multiple actions in a single call and outputs only variable changes at each step, making it efficient for AI assistants to analyze execution flow. Frame transitions (stepping into and out of sub-microflows) are tracked and labeled.
 
 ### Best Practices Report
 
