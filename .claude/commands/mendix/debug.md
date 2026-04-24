@@ -4,9 +4,37 @@ Debug a running Mendix application by setting breakpoints, stepping through micr
 
 ## Prerequisites
 
-- Mendix app running locally (`mxcli docker up -p app.mpr`) or in cloud
-- For local Docker: zero-config (debugger password auto-read from .docker/.env)
-- For cloud: need the debugger password from Mendix Cloud settings
+- The Mendix app must be **running** (locally via Studio Pro, Docker, or in the cloud)
+- You need the **debugger password** (see below for how to find it)
+
+### Connecting to local Studio Pro
+
+1. Run the app in Studio Pro (F5 or Run Locally)
+2. Set the M2EE log level to **Trace** in the Studio Pro console
+3. Start the debugger: in Studio Pro, go to **Run → Start Debugger** and select **Local**
+4. Find the password in the Studio Pro console — look for the M2EE log node message:
+   `Handling adminaction 'enable_debugger' with params '{"password":"<UUID>"}'`
+5. The app URL is `http://localhost:8080` and the password is the UUID from the log message
+
+```bash
+mxcli debug start -p app.mpr --url http://localhost:8080 --password <UUID-from-console>
+```
+
+### Connecting to local Docker
+
+Zero-config — the debugger password is auto-resolved from `.docker/.env`:
+
+```bash
+mxcli debug start -p app.mpr
+```
+
+### Connecting to a cloud app
+
+Use the debugger password from Mendix Cloud portal settings:
+
+```bash
+mxcli debug start -p app.mpr --url https://myapp.mendixcloud.com --password <password>
+```
 
 ## Quick Start
 

@@ -300,7 +300,8 @@ Connect to a running Mendix application's debugger to set breakpoints, step thro
 # start a debug session (local Docker — zero config)
 mxcli debug start -p app.mpr
 
-# or connect to Studio Pro / cloud with explicit credentials
+# connect to local Studio Pro (run the app, start debugger with "Local",
+# find the password in the console: M2EE log node, 'enable_debugger' action)
 mxcli debug start -p app.mpr --url http://localhost:8080 --password <debugger-password>
 
 # see microflow actions with their internal object IDs
