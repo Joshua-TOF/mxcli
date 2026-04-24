@@ -62,6 +62,9 @@ type ExecContext struct {
 	// ThemeRegistry holds cached theme design property definitions (lazy init).
 	ThemeRegistry *ThemeRegistry
 
+	// EmitObjectIDs annotates describe output with internal object IDs (--ids flag).
+	EmitObjectIDs bool
+
 	// Settings holds session-scoped key-value settings (SET command).
 	Settings map[string]any
 

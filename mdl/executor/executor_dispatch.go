@@ -69,6 +69,7 @@ func (e *Executor) newExecContext(ctx context.Context) *ExecContext {
 		Output:           e.output,
 		Format:           e.format,
 		Quiet:            e.quiet,
+		EmitObjectIDs:    e.emitObjectIDs,
 		Logger:           e.logger,
 		Fragments:        e.fragments,
 		Catalog:          cat,

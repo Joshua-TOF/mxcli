@@ -149,6 +149,10 @@ Example:
 		defer exec.Close()
 		exec.SetQuiet(true) // suppress status messages for programmatic output
 
+		if ids, _ := cmd.Flags().GetBool("ids"); ids {
+			exec.SetEmitObjectIDs(true)
+		}
+
 		// Connect
 		connectProg, _ := visitor.Build(fmt.Sprintf("CONNECT LOCAL '%s'", projectPath))
 		for _, stmt := range connectProg.Statements {

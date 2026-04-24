@@ -260,6 +260,7 @@ func init() {
 
 	// Describe command flags
 	describeCmd.Flags().StringP("format", "f", "mdl", "Output format: mdl, json, mermaid, elk")
+	describeCmd.Flags().Bool("ids", false, "Annotate microflow actions with internal object IDs (for debugger integration)")
 
 	// Search command flags
 	searchCmd.Flags().StringP("format", "f", "table", "Output format: table, names, json")

@@ -354,6 +354,15 @@ func emitObjectAnnotations(
 	}
 }
 
+// objectIDComment returns an inline comment with the object ID for debugger integration.
+// Returns empty string when EmitObjectIDs is not set on the context.
+func objectIDComment(ctx *ExecContext, id model.ID) string {
+	if ctx == nil || !ctx.EmitObjectIDs || id == "" {
+		return ""
+	}
+	return " -- @id " + string(id)
+}
+
 // emitActivityStatement appends the formatted activity statement (with error handling)
 // to the lines slice. It handles ON ERROR CONTINUE/ROLLBACK suffixes and custom error
 // handler blocks. This replaces the copy-pasted error handling logic in each traversal function.
@@ -378,12 +387,13 @@ func emitActivityStatement(
 	emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest)
 
 	currentID := obj.GetID()
+	idSuffix := objectIDComment(ctx, currentID)
 	flows := flowsByOrigin[currentID]
 	errorHandlerFlow := findErrorHandlerFlow(flows)
 
 	activity, isAction := obj.(*microflows.ActionActivity)
 	if !isAction {
-		*lines = append(*lines, indentStr+stmt)
+		*lines = append(*lines, indentStr+stmt+idSuffix)
 		return
 	}
 
@@ -405,9 +415,9 @@ func emitActivityStatement(
 		}
 
 		if len(errStmts) == 0 {
-			*lines = append(*lines, indentStr+stmtWithoutSemi+errorSuffix+" { };")
+			*lines = append(*lines, indentStr+stmtWithoutSemi+errorSuffix+" { };"+idSuffix)
 		} else {
-			*lines = append(*lines, indentStr+stmtWithoutSemi+errorSuffix+" {")
+			*lines = append(*lines, indentStr+stmtWithoutSemi+errorSuffix+" {"+idSuffix)
 			for _, errStmt := range errStmts {
 				*lines = append(*lines, indentStr+"  "+errStmt)
 			}
@@ -415,9 +425,9 @@ func emitActivityStatement(
 		}
 	} else if suffix != "" {
 		stmtWithoutSemi := strings.TrimSuffix(strings.TrimSpace(stmt), ";")
-		*lines = append(*lines, indentStr+stmtWithoutSemi+suffix+";")
+		*lines = append(*lines, indentStr+stmtWithoutSemi+suffix+";"+idSuffix)
 	} else {
-		*lines = append(*lines, indentStr+stmt)
+		*lines = append(*lines, indentStr+stmt+idSuffix)
 	}
 }
 
@@ -485,7 +495,7 @@ func traverseFlow(
 		startLine := len(*lines) + headerLineCount
 		if stmt != "" {
 			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest)
-			*lines = append(*lines, indentStr+stmt)
+			*lines = append(*lines, indentStr+stmt+objectIDComment(ctx, currentID))
 		}
 
 		flows := flowsByOrigin[currentID]
@@ -560,7 +570,7 @@ func traverseFlow(
 		startLine := len(*lines) + headerLineCount
 		if stmt != "" {
 			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest)
-			*lines = append(*lines, indentStr+stmt)
+			*lines = append(*lines, indentStr+stmt+objectIDComment(ctx, currentID))
 		}
 
 		*lines = append(*lines, indentStr+"begin")

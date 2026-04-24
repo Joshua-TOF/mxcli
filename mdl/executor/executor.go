@@ -187,6 +187,7 @@ type Executor struct {
 	registry       *Registry                          // statement dispatch registry
 	catalogMu      sync.RWMutex                       // protects catalog field from background goroutine writes
 	catalogGen     uint64                             // monotonic generation counter for catalog swaps
+	emitObjectIDs  bool                               // annotate describe output with internal object IDs
 }
 
 // New creates a new executor with the given output writer.
@@ -213,6 +214,11 @@ func (e *Executor) SetQuiet(quiet bool) {
 // SetFormat sets the output format (table or json).
 func (e *Executor) SetFormat(f OutputFormat) {
 	e.format = f
+}
+
+// SetEmitObjectIDs enables annotation of describe output with internal object IDs.
+func (e *Executor) SetEmitObjectIDs(v bool) {
+	e.emitObjectIDs = v
 }
 
 // SetLogger sets the diagnostics logger for session logging.
